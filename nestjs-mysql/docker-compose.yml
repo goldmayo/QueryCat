@@ -1,0 +1,66 @@
+version: '3'
+services:
+  api:
+    container_name: nestjs_prisma_api
+    build:
+      dockerfile: Dockerfile
+      context: .
+      target: development
+    volumes:
+      # 현재 경로와 컨테이너 내부의 /usr/src/app 디렉토리를 볼륨 마운팅할 것을 나타냅니다.
+      # 데이터가 유지되고, 핫 리로딩을 실행할 부분을 나타냅니다.
+      - .:/usr/src/app
+    env_file:
+      - .env
+    command: npm run start:dev
+    environment:
+      MYSQL_HOST: ${MYSQL_HOST}
+      MYSQL_USER: root
+      MYSQL_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DB: ${MYSQL_DATABASE}
+    ports:
+      - '3000:3000'
+    depends_on:
+      - db
+  db:
+    platform: linux/x86_64
+    image: mysql:8.0
+    container_name: nestjs_prisma_mysql
+    restart: always
+    tty: true
+    stdin_open: true
+    ports:
+      - '3306:3306'
+    env_file:
+      - .env
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      TZ: 'Asia/Seoul'
+    volumes:
+      - docker-nest-mysql-data:/var/lib/mysql
+    command:
+      - --default-authentication-plugin=mysql_native_password
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --skip-character-set-client-handshake
+  app:
+    container_name: react-vite-app
+    build:
+      dockerfile: ../react-vite/Dockerfile
+      context: ../react-vite
+      target: development
+    env_file:
+      - .env
+    environment:
+      VITE_BASE_URL: ${BASE_CLIENT_API_URL}
+    volumes:
+      - ../react-vite:/usr/src/app
+    ports:
+      - '3001:3001'
+    command: npm run dev
+    depends_on:
+      - db
+      - api
+volumes:
+  docker-nest-mysql-data:
